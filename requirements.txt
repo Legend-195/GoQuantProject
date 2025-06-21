@@ -1,0 +1,21 @@
+# WebSocket and real-time data handling
+websocket-client==1.7.0
+
+# Data manipulation and numerical computation
+pandas==2.2.2
+numpy==1.26.4
+
+# Regression and machine learning
+scikit-learn==1.4.2
+statsmodels==0.14.1
+
+# Frontend interface
+streamlit==1.35.0
+
+# Optional: for visualization (if used)
+matplotlib==3.8.4
+seaborn==0.13.2
+
+# General utilities
+tqdm==4.66.2
+joblib==1.4.0
