@@ -1,144 +1,99 @@
-⚡ GoQuant Real-Time Trade Simulator
-This is a high-performance real-time trading simulator built for the GoQuant internship program. The system processes live L2 order book data via WebSocket, models slippage, fees, market impact, and maker/taker behavior, and delivers instantaneous analytics via a Streamlit-based user interface.
+# ⚡ GoQuant Real-Time Trade Simulator
 
-🔍 Project Objectives
-Build a realistic market simulation environment
+This project is a **real-time trade execution simulator** developed as part of the GoQuant internship selection challenge. It is built in Python and processes **live Level 2 (L2) order book data** from OKX via WebSocket, applying advanced models to simulate realistic trading costs and market behavior.
 
-Analyze microstructure-level trading costs
+## 📈 Key Features
 
-Provide accurate real-time trade analytics and visual feedback
+### ✅ Real-Time WebSocket Integration
+- Live L2 order book stream from:  
+  `wss://ws.gomarket-cpp.goquant.io/ws/l2-orderbook/okx/BTC-USDT-SWAP`
+- Continuously updates with each market tick for accurate, low-latency decision-making.
 
-Help traders understand execution risk and latency in fast-moving markets
+### 🔮 Execution Parameter Prediction
 
-💻 System Overview
-The system integrates several components:
+#### 1. **Expected Slippage**
+- Modeled using **Quantile Regression** (`statsmodels.QuantReg`) at the 50th percentile.
+- Inputs: `spread`, `USD amount`, `depth`
+- Reflects the median execution cost in basis points (bps).
 
-✅ WebSocket Integration
-Connects to GoQuant's live L2 order book feed:
-wss://ws.gomarket-cpp.goquant.io/ws/l2-orderbook/okx/BTC-USDT-SWAP
+#### 2. **Expected Fees**
+- Calculated using a **rule-based fee model** depending on order type (maker/taker) and tier level.
+- Example: `Tier 1` taker fee = 0.06%, maker fee = 0.02%
 
-Parses real-time bid/ask levels and computes microstructure statistics like spread and depth
+#### 3. **Expected Market Impact**
+- Estimated using the **Almgren-Chriss Optimal Execution Model** with dynamic programming.
+- Incorporates:
+  - **Temporary Impact**: \( \eta \cdot v^\alpha \)
+  - **Permanent Impact**: \( \gamma \cdot v^\beta \)
+  - **Execution Risk**: depends on volatility, inventory, and time horizon
 
-Feeds tick-wise data into predictive models with latency benchmarking
+#### 4. **Net Execution Cost**
+- Computed as:  
+  \[
+  \text{Net Cost} = \text{Slippage} + \text{Fees} + \text{Market Impact}
+  \]
 
-📈 Slippage Prediction (Quantile Regression)
-Uses a quantile regression model trained on historical tick-level data
+#### 5. **Maker/Taker Proportion**
+- Classified using **Logistic Regression** trained on labeled WebSocket snapshots.
+- Inputs: `order_price`, `order_type`, `side`, `spread`, `depth`, `bid/ask levels`
+- Output: probability of a trade being a taker.
 
-Input features: spread, order size (USD), depth
+#### 6. **Internal Latency**
+- Measures tick-wise processing time using `time.perf_counter()` for profiling system performance.
 
-Output: slippage in basis points (bps)
+---
 
-50th percentile (median) is modeled to provide robust slippage expectations under asymmetric market conditions
+## 🧠 Machine Learning Models Used
 
-💸 Fee Estimation (Rule-Based)
-Rule-based module based on exchange fee tier (e.g., Tier 1, Tier 2, etc.)
+### 📌 Quantile Regression (Slippage)
+- Library: `statsmodels`
+- Trained on features: `spread`, `usd_amount`, `depth`
+- Model Results:
+  - **MSE**: 5.39e-05  
+  - **R²**: 0.798  
+  - **50th percentile** (median): chosen to reflect realistic execution cost in volatile financial environments.
 
-Calculates expected transaction cost depending on order type (maker or taker)
+### 📌 Logistic Regression (Maker/Taker)
+- Library: `scikit-learn`
+- Model Accuracy: **100%** on labeled real-time data  
+- Uses one-hot encoded `order_type` and `side` features  
+- Highly interpretable and suitable for binary classification
 
-📉 Market Impact Estimation (Almgren-Chriss Model)
-Implements a dynamic programming approach based on Almgren-Chriss optimal execution theory
+---
 
-Models temporary and permanent price impacts
+## 📊 UI Integration with Streamlit
 
-Parameters include risk aversion, volatility, and execution trajectory over time
+A clean, two-panel layout:
+- **Left Panel** – User Inputs:
+  - Exchange (OKX)
+  - Asset (BTC-USDT-SWAP)
+  - Order Type
+  - Quantity (USD)
+  - Volatility
+  - Fee Tier
 
-Estimates expected price movement due to the order itself
+- **Right Panel** – Real-Time Outputs:
+  - Predicted Slippage
+  - Fees
+  - Market Impact
+  - Net Cost
+  - Maker/Taker Probability
+  - Internal Latency
 
-🧠 Maker/Taker Prediction (Logistic Regression)
-Uses a logistic regression classifier to estimate probability of a trade being executed as maker or taker
+---
 
-Input features: spread, depth, order price, order size, order type, order side
+## ⚙️ Performance Optimizations
 
-Output: binary classification → maker (0) or taker (1)
+- Efficient NumPy-based dynamic programming for the Almgren-Chriss model
+- Minimal latency via direct in-memory processing of order book JSON messages
+- Quantile regression fallback for missing data ensures model robustness
+- Lazy evaluation of model inference to reduce computation during idle ticks
 
-⚙️ Internal Latency Measurement
-Measures the internal processing time per market tick from WebSocket input to output generation
+---
 
-Helps benchmark system performance under real-time constraints
+## 📦 Requirements
 
-🎨 Streamlit UI
-The interface is built using Streamlit and includes:
+Install all dependencies via:
 
-🔧 Input Panel (Left)
-Exchange (OKX)
-
-Spot Asset (e.g., BTC-USDT-SWAP)
-
-Order Type (market)
-
-Quantity (~USD value)
-
-Volatility (from external source)
-
-Fee Tier (Tier 1, Tier 2, etc.)
-
-📊 Output Panel (Right)
-Expected Slippage
-
-Expected Fees
-
-Expected Market Impact
-
-Net Cost (slippage + fee + market impact)
-
-Maker/Taker Proportion
-
-Internal Latency (seconds)
-
-🚀 Performance Optimization Techniques
-Vectorized matrix operations (NumPy) for fast computation
-
-Pretrained ML models loaded via Pickle/Joblib
-
-Efficient use of dynamic programming for market impact
-
-Internal latency profiling using time.perf_counter()
-
-Asynchronous WebSocket handling for maker/taker stream
-
-📁 Folder Structure
-bash
-Copy
-Edit
-project-root/
-│
-├── models/                     # Pretrained regression/classification models
-├── ui/                         # Streamlit interface code
-├── utils/                      # Market impact and fee logic
-├── data/                       # Historical slippage/maker-taker datasets
-├── slippage_collector.py       # Main script to collect slippage + live latency
-├── maker_taker_collector.py    # Script to label and classify maker/taker
-├── main.py                     # Core backend integration
-├── requirements.txt
-└── README.md                   # You're reading this
-📊 Example Metrics
-Quantile Regression
-
-MSE: 5.39e-05
-
-R² Score: 0.79
-
-50th percentile slippage predicted using spread, depth, and order size
-
-Logistic Regression
-
-Accuracy: 100%
-
-Used for real-time classification of maker vs taker execution
-
-🧠 Learnings
-Deep understanding of order book dynamics
-
-Execution risk modeling with financial mathematics
-
-Real-time system design and optimization
-
-UI/UX integration for financial analytics
-
-📌 How to Run
-bash
-Copy
-Edit
+```bash
 pip install -r requirements.txt
-streamlit run ui/main.py
-
